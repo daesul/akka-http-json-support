@@ -2,6 +2,7 @@
 
 ##circe-json
 Contains sources using circe.
+
 ##spray-json
 Constains sources using spray json.
 
@@ -24,4 +25,3 @@ curl -H 'Content-Type: application/json' 'localhost:8080/customer' -d '{
   "gender": "FEMALE"
 }'
 ```
-

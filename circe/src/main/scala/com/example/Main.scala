@@ -17,17 +17,20 @@
 package com.example
 
 import java.time.LocalDate
+import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import com.example.domain._
-import java.util.UUID
+import de.heikoseeberger.akkahttpcirce.CirceSupport
 
-import com.example.json.JsonSupport
+object Main extends App with CirceSupport {
 
-object Main extends App with JsonSupport {
+  import io.circe.generic.auto._
+  import io.circe.java8.time._
+
   implicit val system       = ActorSystem()
   implicit val executor     = system.dispatcher
   implicit val materializer = ActorMaterializer()
