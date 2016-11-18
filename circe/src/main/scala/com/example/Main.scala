@@ -18,6 +18,7 @@ package com.example
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.StatusCodes.Created
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import java.time.LocalDate
@@ -29,52 +30,59 @@ import scala.util.Failure
 
 object Main extends App with CirceSupport {
   import domain._
-  import io.circe.generic.auto._
-  import io.circe.java8.time._
 
-  implicit val system       = ActorSystem()
-  implicit val executor     = system.dispatcher
-  implicit val materializer = ActorMaterializer()
+  implicit private val system = ActorSystem()
+  implicit private val mat    = ActorMaterializer()
 
   // Some dummy data
-  val uuid1 = UUID.fromString("5919d228-9abf-11e6-9f33-a24fc0d9649c")
-  val uuid2 = UUID.fromString("660f7186-9abf-11e6-9f33-a24fc0d9649c")
-  val uuid3 = UUID.fromString("70d0d722-9abf-11e6-9f33-a24fc0d9649c")
+  private val uuid1 = UUID.fromString("5919d228-9abf-11e6-9f33-a24fc0d9649c")
+  private val uuid2 = UUID.fromString("660f7186-9abf-11e6-9f33-a24fc0d9649c")
+  private val uuid3 = UUID.fromString("70d0d722-9abf-11e6-9f33-a24fc0d9649c")
 
-  val address1 = Address("Musterstrasse 2", "Musterstadt", "12345")
-  val address2 =
+  private val address1 = Address("Musterstrasse 2", "Musterstadt", "12345")
+  private val address2 =
     Address("Testplatz 80 5", "Musterhausen", "45789", active = true)
-  val address3 = Address("Akka-Allee 1887", "Akkaburg", "61860", active = true)
+  private val address3 =
+    Address("Akka-Allee 1887", "Akkaburg", "61860", active = true)
 
-  var customers = Map(
-    uuid1 -> Customer(uuid1,
-                      "test1",
-                      LocalDate.of(2010, 1, 11),
-                      Female,
-                      Customer.Type.VIP,
-                      None),
-    uuid2 -> Customer(uuid2,
-                      "test2",
-                      LocalDate.of(2014, 6, 5),
-                      Male,
-                      Customer.Type.VIP,
-                      Some(Set(address1, address2))),
-    uuid3 -> Customer(uuid3,
-                      "test3",
-                      LocalDate.of(2012, 2, 25),
-                      Female,
-                      Customer.Type.REGULAR,
-                      Some(Set(address3)))
-  )
+  private var customers =
+    Map(
+      uuid1 -> Customer(uuid1,
+                        "test1",
+                        LocalDate.of(2010, 1, 11),
+                        Female,
+                        Customer.Type.VIP,
+                        None),
+      uuid2 -> Customer(uuid2,
+                        "test2",
+                        LocalDate.of(2014, 6, 5),
+                        Male,
+                        Customer.Type.VIP,
+                        Some(Set(address1, address2))),
+      uuid3 -> Customer(uuid3,
+                        "test3",
+                        LocalDate.of(2012, 2, 25),
+                        Female,
+                        Customer.Type.REGULAR,
+                        Some(Set(address3)))
+    )
 
-  val paths = {
+  private def route = {
     import Directives._
+    import io.circe.generic.auto._
+    import io.circe.java8.time._
+
     pathPrefix("customer") {
-      post {
-        entity(as[Customer]) { customer =>
-          println(customer)
-          customers += customer.id -> customer
+      pathEndOrSingleSlash {
+        get {
           complete(customers)
+        } ~
+        post {
+          entity(as[Customer]) { customer =>
+            println(customer)
+            customers += customer.id -> customer
+            complete(Created -> customer)
+          }
         }
       } ~
       path(JavaUUID) { id =>
@@ -85,13 +93,13 @@ object Main extends App with CirceSupport {
     }
   }
 
-  Http().bindAndHandle(paths, "localhost", 8080).onComplete {
+  import system.dispatcher
+  Http().bindAndHandle(route, "localhost", 8080).onComplete {
     case Failure(cause) =>
       println(s"Can't bind to localhost:8000: $cause")
       system.terminate()
     case _ =>
       println(s"Server online at http://localhost:8080")
   }
-
   Await.ready(system.whenTerminated, Duration.Inf)
 }
