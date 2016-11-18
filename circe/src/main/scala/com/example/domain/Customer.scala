@@ -18,16 +18,45 @@ package com.example.domain
 
 import java.util.UUID
 import java.time.LocalDate
+import cats.data.Xor
+import io.circe.{ Decoder, DecodingFailure, Encoder, HCursor, Json }
 
-import com.example.domain.CustomerType.CustomerType
+object Customer {
 
-case class Customer(id: UUID,
-                    name: String,
-                    registrationDate: LocalDate,
-                    gender: Gender,
-                    customerType: CustomerType,
-                    addresses: Option[Set[Address]])
-case class Address(street: String,
-                   city: String,
-                   zip: String,
-                   active: Boolean = false)
+  final object Type extends Enumeration {
+
+    type Type = Value
+
+    val REGULAR, VIP = Value
+
+    implicit val customerTypeDecoder: Decoder[Type] =
+      new Decoder[Type] {
+        override def apply(c: HCursor) =
+          c.as[String].flatMap {
+            case x =>
+              Xor
+                .catchOnly[NoSuchElementException](Type.withName(x))
+                .leftMap(e =>
+                  DecodingFailure(s"Error while decoding: ${e.getMessage}",
+                                  List()))
+          }
+      }
+
+    implicit val customerTypeEncoder: Encoder[Type] =
+      new Encoder[Type] {
+        override def apply(a: Type) = Json.fromString(a.toString)
+      }
+  }
+}
+
+final case class Customer(id: UUID,
+                          name: String,
+                          registrationDate: LocalDate,
+                          gender: Gender,
+                          customerType: Customer.Type.Type,
+                          addresses: Option[Set[Address]])
+
+final case class Address(street: String,
+                         city: String,
+                         zip: String,
+                         active: Boolean = false)

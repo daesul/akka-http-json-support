@@ -16,18 +16,19 @@
 
 package com.example
 
-import java.time.LocalDate
-import java.util.UUID
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
-import com.example.domain._
+import java.time.LocalDate
+import java.util.UUID
 import de.heikoseeberger.akkahttpcirce.CirceSupport
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.util.Failure
 
 object Main extends App with CirceSupport {
-
+  import domain._
   import io.circe.generic.auto._
   import io.circe.java8.time._
 
@@ -50,23 +51,24 @@ object Main extends App with CirceSupport {
                       "test1",
                       LocalDate.of(2010, 1, 11),
                       Female,
-                      CustomerType.VIP,
+                      Customer.Type.VIP,
                       None),
     uuid2 -> Customer(uuid2,
                       "test2",
                       LocalDate.of(2014, 6, 5),
                       Male,
-                      CustomerType.VIP,
+                      Customer.Type.VIP,
                       Some(Set(address1, address2))),
     uuid3 -> Customer(uuid3,
                       "test3",
                       LocalDate.of(2012, 2, 25),
                       Female,
-                      CustomerType.REGULAR,
+                      Customer.Type.REGULAR,
                       Some(Set(address3)))
   )
 
   val paths = {
+    import Directives._
     pathPrefix("customer") {
       post {
         entity(as[Customer]) { customer =>
@@ -83,7 +85,13 @@ object Main extends App with CirceSupport {
     }
   }
 
-  Http().bindAndHandle(paths, "localhost", 8080)
+  Http().bindAndHandle(paths, "localhost", 8080).onComplete {
+    case Failure(cause) =>
+      println(s"Can't bind to localhost:8000: $cause")
+      system.terminate()
+    case _ =>
+      println(s"Server online at http://localhost:8080")
+  }
 
-  println(s"Server online at http://localhost:8080")
+  Await.ready(system.whenTerminated, Duration.Inf)
 }

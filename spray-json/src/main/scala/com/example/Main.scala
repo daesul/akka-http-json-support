@@ -16,18 +16,20 @@
 
 package com.example
 
-import java.time.LocalDate
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
-import com.example.domain._
+import java.time.LocalDate
 import java.util.UUID
-
 import com.example.json.JsonSupport
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.util.Failure
 
 object Main extends App with JsonSupport {
+  import domain._
+
   implicit val system       = ActorSystem()
   implicit val executor     = system.dispatcher
   implicit val materializer = ActorMaterializer()
@@ -64,6 +66,7 @@ object Main extends App with JsonSupport {
   )
 
   val paths = {
+    import Directives._
     pathPrefix("customer") {
       post {
         entity(as[Customer]) { customer =>
@@ -80,7 +83,13 @@ object Main extends App with JsonSupport {
     }
   }
 
-  Http().bindAndHandle(paths, "localhost", 8080)
+  Http().bindAndHandle(paths, "localhost", 8080).onComplete {
+    case Failure(cause) =>
+      println(s"Can't bind to localhost:8000: $cause")
+      system.terminate()
+    case _ =>
+      println(s"Server online at http://localhost:8080")
+  }
 
-  println(s"Server online at http://localhost:8080")
+  Await.ready(system.whenTerminated, Duration.Inf)
 }
