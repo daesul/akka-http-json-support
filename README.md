@@ -1,10 +1,10 @@
 # akka-http-json-support
 
-##circe-json
-Contains sources using circe.
+##circe
+Contains sources using circe. Sart with circe/reStart. Stop with circe/reStop.
 
 ##spray-json
-Constains sources using spray json.
+Constains sources using spray json. Start with spray-json/reStart. Stop with spray-json/reStop
 
 ##Examples
 Examples using CURL with GET and POST
